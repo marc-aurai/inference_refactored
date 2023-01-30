@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>inference_pipe_refactored &mdash; Inference Refactored Docs 27.01.23 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Inference Refactored Docs
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">inference_refactored</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Inference Refactored Docs</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Module code</a> &raquo;</li>
+      <li>inference_pipe_refactored</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for inference_pipe_refactored</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot; This is the main script of the Inference container on Azure. </span>
+<span class="sd">The container reads the preprocessed messages inside the inference queue,</span>
+<span class="sd">and sends a post request to the Azure ML studio endpoint. The endpoint will answer with </span>
+<span class="sd">a prediction, uuid, probabilities, prediction_list and timestamp -&gt; created_at.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">sleep</span>
+
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">from</span> <span class="nn">azure.storage.queue</span> <span class="kn">import</span> <span class="p">(</span><span class="n">QueueClient</span><span class="p">,</span> <span class="n">TextBase64DecodePolicy</span><span class="p">,</span>
+                                 <span class="n">TextBase64EncodePolicy</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">cosmosdb_insert</span> <span class="kn">import</span> <span class="n">initialize_cosmos_session</span><span class="p">,</span> <span class="n">insert_data</span>
+
+
+<div class="viewcode-block" id="get_queue_client_inference"><a class="viewcode-back" href="../inference_pipe_refactored.html#inference_pipe_refactored.get_queue_client_inference">[docs]</a><span class="k">def</span> <span class="nf">get_queue_client_inference</span><span class="p">(</span><span class="n">connect_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">q_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QueueClient</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; Returns an Azure Queue Storage connection object, in this case the inference-messages-queue.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        connect_str (str): The connection string to the storage account. </span>
+<span class="sd">                           The secret connection string is located in the .env file.</span>
+<span class="sd">        q_name (str): The name of the Azure queue.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        QueueClient: This client represents interaction with the inference queue. </span>
+<span class="sd">                     It provides operations to create, delete, or configure a queue and includes operations to send, </span>
+<span class="sd">                     receive, peek, delete, and update messages within it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QueueClient</span><span class="o">.</span><span class="n">from_connection_string</span><span class="p">(</span>
+        <span class="n">connect_str</span><span class="p">,</span> <span class="n">q_name</span>
+    <span class="p">)</span></div>
+
+<div class="viewcode-block" id="get_queue_client_prediction"><a class="viewcode-back" href="../inference_pipe_refactored.html#inference_pipe_refactored.get_queue_client_prediction">[docs]</a><span class="k">def</span> <span class="nf">get_queue_client_prediction</span><span class="p">(</span><span class="n">connect_str</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">q_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QueueClient</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; Returns an Azure Queue Storage connection object, in this case the predicted-labels-queue.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        connect_str (str): The connection string to the storage account. </span>
+<span class="sd">                           The secret connection string is located in the .env file.</span>
+<span class="sd">        q_name (str): The name of the Azure queue.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        QueueClient: This client represents interaction with the prediction queue. </span>
+<span class="sd">                     It provides operations to create, delete, or configure a queue and includes operations to send, </span>
+<span class="sd">                     receive, peek, delete, and update messages within it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">QueueClient</span><span class="o">.</span><span class="n">from_connection_string</span><span class="p">(</span>
+        <span class="n">connect_str</span><span class="p">,</span> <span class="n">q_name</span><span class="p">,</span> <span class="n">message_encode_policy</span><span class="o">=</span><span class="n">TextBase64EncodePolicy</span><span class="p">()</span>
+    <span class="p">)</span></div>
+
+<div class="viewcode-block" id="endpoint_request"><a class="viewcode-back" href="../inference_pipe_refactored.html#inference_pipe_refactored.endpoint_request">[docs]</a><span class="k">def</span> <span class="nf">endpoint_request</span><span class="p">(</span><span class="n">preprocessed_message</span><span class="p">:</span> <span class="n">json</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; This function sends a post request to the Inference endpoint on Azure ML studio. And returns in total 5 objects.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        preprocessed_message (json): The message from the inference Queue, this message was provided </span>
+<span class="sd">                                     by the preprocess container. Therefore this message is already pre-processed.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: Returns in total 5 objects: prediction, uuid, probabilities, prediction_list, created_at</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">api_key</span> <span class="o">=</span> <span class="s1">&#39;7cwnfH3DBQOU1IpZ4tgO2IOkeDNSBR21&#39;</span> 
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+        <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://manufy-endpoint.westeurope.inference.ml.azure.com/score&quot;</span><span class="p">,</span>
+        <span class="n">json</span><span class="o">=</span><span class="n">preprocessed_message</span><span class="p">,</span>
+        <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">:</span><span class="s1">&#39;application/json&#39;</span><span class="p">,</span> <span class="s1">&#39;Authorization&#39;</span><span class="p">:(</span><span class="s1">&#39;Bearer &#39;</span><span class="o">+</span> <span class="n">api_key</span><span class="p">)}</span>
+    <span class="p">)</span>
+    <span class="n">resp_json</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="n">prediction</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">,</span> <span class="n">prediction_list</span><span class="p">,</span> <span class="n">created_at</span> <span class="o">=</span> <span class="n">resp_json</span>
+    <span class="k">return</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">,</span> <span class="n">prediction_list</span><span class="p">,</span> <span class="n">created_at</span></div>
+
+<div class="viewcode-block" id="process_message"><a class="viewcode-back" href="../inference_pipe_refactored.html#inference_pipe_refactored.process_message">[docs]</a><span class="k">def</span> <span class="nf">process_message</span><span class="p">(</span><span class="n">message</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; Reads and processes messages in the Azure inference Queue.</span>
+<span class="sd">        And sends the pre-processed message to the Azure ML studio endpoint.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        message (dict): This is the preprocessed message that comes from the inference Queue.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        (str): Returns in total 6 objects: message, uuid, prediction, probabilities, prediction_list, created_at</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">message_str</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">content</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">message_str</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+    <span class="n">prediction</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">,</span> <span class="n">prediction_list</span><span class="p">,</span> <span class="n">created_at</span> <span class="o">=</span> <span class="n">endpoint_request</span><span class="p">(</span><span class="n">message_str</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">message</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">,</span> <span class="n">prediction_list</span><span class="p">,</span> <span class="n">created_at</span></div>
+
+<div class="viewcode-block" id="manufy_format"><a class="viewcode-back" href="../inference_pipe_refactored.html#inference_pipe_refactored.manufy_format">[docs]</a><span class="k">def</span> <span class="nf">manufy_format</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Manufy expects the following format inside the prediction Queue:</span>
+<span class="sd">    [{&#39;label&#39;: &#39;contact_info&#39;, &#39;probability&#39;: 94.06}, {&#39;label&#39;: &#39;meeting&#39;, &#39;probability&#39;: 52.55}]</span>
+
+
+<span class="sd">    Args:</span>
+<span class="sd">        labels (list): Includes a list with 0&#39;s(False) and 1&#39;s(True) for each label as a list.</span>
+<span class="sd">                       probabilities (list): List with all the probabilities, meaning that there are in total 7 probabilities in this list.</span>
+<span class="sd">                       Since their are in total 7 labels.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Returns a dictionary with the following format: [{&#39;label&#39;: &#39;contact_info&#39;, &#39;probability&#39;: 94.06}]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">label_dict_totaal</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Labels&quot;</span><span class="p">:[]}</span>
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">labels</span><span class="p">):</span>
+        <span class="n">label_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;label&quot;</span><span class="p">:</span><span class="n">label</span><span class="p">,</span> <span class="s2">&quot;probability&quot;</span><span class="p">:</span><span class="n">probabilities</span><span class="p">[</span><span class="n">index</span><span class="p">]}</span>
+        <span class="n">label_dict_totaal</span><span class="p">[</span><span class="s2">&quot;Labels&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label_dict</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">label_dict_totaal</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Labels&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="cosmos_label_format"><a class="viewcode-back" href="../inference_pipe_refactored.html#inference_pipe_refactored.cosmos_label_format">[docs]</a><span class="k">def</span> <span class="nf">cosmos_label_format</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">,</span> <span class="n">created_at</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create unique column for each label inside the cosmosdb for predictions</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        uuid (str): Unique user id.</span>
+<span class="sd">        prediction (int): Predicted label for the message.</span>
+<span class="sd">        probabilities (list): List with all the probabilities, meaning that there are in total 7 probabilities in this list.</span>
+<span class="sd">        Since their are in total 7 labels.</span>
+<span class="sd">        created_at (str): Timestamp of the message.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Dictionary with the following format: {&quot;Label&quot;: boolean}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dict_message</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;uuid&quot;</span><span class="p">:</span><span class="n">uuid</span><span class="p">,</span> <span class="s2">&quot;Label&quot;</span><span class="p">:</span><span class="n">prediction</span><span class="p">,</span><span class="s2">&quot;Probabilities&quot;</span><span class="p">:</span><span class="n">probabilities</span><span class="p">,</span> <span class="s2">&quot;created_at&quot;</span><span class="p">:</span> <span class="n">created_at</span><span class="p">}</span>
+    <span class="n">label_list</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="s2">&quot;meeting&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;fabric_service&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;sampling_order&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;contact_info&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;intro_message&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;non_eu_country&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;invoice&quot;</span><span class="p">,</span>
+            <span class="p">]</span>
+    <span class="n">dict_message</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">dict_message</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="c1"># Set all to false, default</span>
+
+    <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">label_list</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">pred_label</span> <span class="ow">in</span> <span class="n">prediction</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">label</span> <span class="o">==</span> <span class="p">(</span><span class="n">pred_label</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)):</span>
+                <span class="n">dict_message</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span> 
+    <span class="k">return</span> <span class="n">dict_message</span> </div>
+    
+    
+<div class="viewcode-block" id="insert_message_into_prediction_queue"><a class="viewcode-back" href="../inference_pipe_refactored.html#inference_pipe_refactored.insert_message_into_prediction_queue">[docs]</a><span class="k">def</span> <span class="nf">insert_message_into_prediction_queue</span><span class="p">(</span>
+    <span class="n">queue_client</span><span class="p">:</span> <span class="n">QueueClient</span><span class="p">,</span> 
+    <span class="n">uuid</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> 
+    <span class="n">prediction</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> 
+    <span class="n">probabilities</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> 
+    <span class="n">prediction_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> 
+    <span class="n">created_at</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">cosmos_session</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Insert the dictionary as a message inside the prediction Queue.</span>
+<span class="sd">    with the following format: [{&quot;label&quot;: &quot;meeting&quot;, &quot;probability&quot;:68.80}]</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        queue_client (QueueClient): This client represents interaction with the prediction queue. </span>
+<span class="sd">        uuid (str): Unique user id.</span>
+<span class="sd">        prediction (int): Predicted label for the message.</span>
+<span class="sd">        probabilities (list): List with all the probabilities, meaning that there are in total 7 probabilities in this list.</span>
+<span class="sd">                              Since their are in total 7 labels.</span>
+<span class="sd">        prediction_list (list): Includes a list with 0&#39;s(False) and 1&#39;s(True) for each label as a list.</span>
+<span class="sd">        created_at (str): Timestamp of the message.</span>
+<span class="sd">        cosmos_session (Session): The Cosmos Database session in Azure (manufy_db.predictions).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">probabilities_formatted</span> <span class="o">=</span>  <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">probabilities</span><span class="p">)</span> 
+    
+    <span class="n">dict_message</span> <span class="o">=</span> <span class="n">cosmos_label_format</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">probabilities_formatted</span><span class="p">,</span> <span class="n">created_at</span><span class="p">)</span>
+    <span class="n">insert_data</span><span class="p">(</span><span class="n">cosmos_session</span><span class="p">,</span> <span class="o">**</span><span class="n">dict_message</span><span class="p">)</span>
+    <span class="n">labels_and_probs</span> <span class="o">=</span> <span class="n">manufy_format</span><span class="p">(</span><span class="n">prediction_list</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">labels_and_probs</span><span class="p">:</span> <span class="c1"># Check if list is empty</span>
+        <span class="n">labels_and_probs</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;label&quot;</span><span class="p">:</span><span class="s2">&quot;unidentified&quot;</span><span class="p">,</span> <span class="s2">&quot;probability&quot;</span><span class="p">:</span><span class="mf">100.00</span><span class="p">})</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">labels_and_probs</span><span class="p">,</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">dict_messsage_manufy</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;uuid&quot;</span><span class="p">:</span><span class="n">uuid</span><span class="p">,</span> <span class="s2">&quot;labels&quot;</span><span class="p">:</span><span class="n">labels_and_probs</span><span class="p">}</span>
+    <span class="n">queue_client</span><span class="o">.</span><span class="n">send_message</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">dict_messsage_manufy</span><span class="p">))</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">conn_str</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AZURE_STORAGE_CONNECTION_STRING&quot;</span><span class="p">)</span>
+    <span class="n">inference_queue</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;INFERENCE_MESSAGES_QUEUE&quot;</span><span class="p">)</span>
+    <span class="n">prediction_queue</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;PREDICTION_MESSAGES_QUEUE&quot;</span><span class="p">)</span>
+
+    <span class="n">inference_queue_client</span> <span class="o">=</span> <span class="n">get_queue_client_inference</span><span class="p">(</span><span class="n">conn_str</span><span class="p">,</span> <span class="n">inference_queue</span><span class="p">)</span>
+    <span class="n">prediction_queue_client</span> <span class="o">=</span> <span class="n">get_queue_client_prediction</span><span class="p">(</span><span class="n">conn_str</span><span class="p">,</span> <span class="n">prediction_queue</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loaded queues.&quot;</span><span class="p">)</span>
+
+    <span class="n">cosmos_cluster</span><span class="p">,</span> <span class="n">cosmos_session</span> <span class="o">=</span> <span class="n">initialize_cosmos_session</span><span class="p">()</span>
+
+    <span class="c1"># Continuously check for new messages in message queue</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">properties</span> <span class="o">=</span> <span class="n">inference_queue_client</span><span class="o">.</span><span class="n">get_queue_properties</span><span class="p">()</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">approximate_message_count</span>
+        <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">messages</span> <span class="o">=</span> <span class="n">inference_queue_client</span><span class="o">.</span><span class="n">receive_messages</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">:</span>
+                <span class="n">message</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">,</span> <span class="n">prediction_list</span><span class="p">,</span> <span class="n">created_at</span> <span class="o">=</span> <span class="n">process_message</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;prediction label: &quot;</span><span class="p">,</span><span class="n">prediction</span><span class="p">)</span>
+
+                <span class="n">insert_message_into_prediction_queue</span><span class="p">(</span><span class="n">prediction_queue_client</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">prediction</span><span class="p">,</span> <span class="n">probabilities</span><span class="p">,</span> <span class="n">prediction_list</span><span class="p">,</span> <span class="n">created_at</span><span class="p">,</span> <span class="n">cosmos_session</span><span class="p">)</span>
+                <span class="n">inference_queue_client</span><span class="o">.</span><span class="n">delete_message</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">message</span><span class="o">.</span><span class="n">pop_receipt</span><span class="p">)</span>
+
+        <span class="n">sleep</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;SLEEP_TIME&quot;</span><span class="p">)))</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Marc Blomvliet.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

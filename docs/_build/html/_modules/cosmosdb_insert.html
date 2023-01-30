@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cosmosdb_insert &mdash; Inference Refactored Docs 27.01.23 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Inference Refactored Docs
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">inference_refactored</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Inference Refactored Docs</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Module code</a> &raquo;</li>
+      <li>cosmosdb_insert</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for cosmosdb_insert</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">cassandra.auth</span> <span class="kn">import</span> <span class="n">PlainTextAuthProvider</span>
+<span class="kn">from</span> <span class="nn">cassandra.cluster</span> <span class="kn">import</span> <span class="n">Cluster</span>
+<span class="kn">from</span> <span class="nn">cassandra.policies</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">ssl</span> <span class="kn">import</span> <span class="n">PROTOCOL_TLSv1_2</span><span class="p">,</span> <span class="n">SSLContext</span><span class="p">,</span> <span class="n">CERT_NONE</span>
+<span class="kn">from</span> <span class="nn">dotenv</span> <span class="kn">import</span> <span class="n">load_dotenv</span>
+<span class="n">load_dotenv</span><span class="p">()</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The authenticate keys are accessed through the connection string of the cosmos db:</span>
+<span class="sd">Navigate to the cosmosdb storage account, and access the Connection String settings on the left panel.</span>
+<span class="sd">Username is the USERNAME key, password is the PRIMARY PASSWORD key, the first input for the Cluster</span>
+<span class="sd">command is the CONTACT POINT key, and port is the PORT key.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="initialize_cosmos_session"><a class="viewcode-back" href="../cosmosdb_insert.html#cosmosdb_insert.initialize_cosmos_session">[docs]</a><span class="k">def</span> <span class="nf">initialize_cosmos_session</span><span class="p">():</span>
+    <span class="n">ssl_context</span> <span class="o">=</span> <span class="n">SSLContext</span><span class="p">(</span><span class="n">PROTOCOL_TLSv1_2</span><span class="p">)</span>
+    <span class="n">ssl_context</span><span class="o">.</span><span class="n">verify_mode</span> <span class="o">=</span> <span class="n">CERT_NONE</span>
+    <span class="n">auth_provider</span> <span class="o">=</span> <span class="n">PlainTextAuthProvider</span><span class="p">(</span>
+        <span class="n">username</span><span class="o">=</span><span class="s2">&quot;manufycosmos&quot;</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;COSMOSDB_PASSWORD&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">cluster</span> <span class="o">=</span> <span class="n">Cluster</span><span class="p">(</span>
+        <span class="p">[</span><span class="s2">&quot;manufycosmos.cassandra.cosmos.azure.com&quot;</span><span class="p">],</span>
+        <span class="n">port</span><span class="o">=</span><span class="mi">10350</span><span class="p">,</span>
+        <span class="n">auth_provider</span><span class="o">=</span><span class="n">auth_provider</span><span class="p">,</span>
+        <span class="n">ssl_context</span><span class="o">=</span><span class="n">ssl_context</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">session</span> <span class="o">=</span> <span class="n">cluster</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Creating Keyspace&quot;</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="s2">&quot;CREATE KEYSPACE IF NOT EXISTS manufy_db WITH replication = {&#39;class&#39;: &#39;NetworkTopologyStrategy&#39;, &#39;datacenter&#39; : &#39;1&#39; }&quot;</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Creating Table&quot;</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="s2">&quot;CREATE TABLE IF NOT EXISTS manufy_db.predictions (uuid varchar PRIMARY KEY, all_Labels varchar, Probabilities varchar, created_at varchar, label_meeting boolean, label_fabric_service boolean, label_sampling_order boolean, label_contact_info boolean, label_intro_message boolean, label_non_eu_country boolean, label_invoice boolean)&quot;</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">cluster</span><span class="p">,</span> <span class="n">session</span></div>
+
+<div class="viewcode-block" id="insert_data"><a class="viewcode-back" href="../cosmosdb_insert.html#cosmosdb_insert.insert_data">[docs]</a><span class="k">def</span> <span class="nf">insert_data</span><span class="p">(</span>
+    <span class="n">session</span><span class="p">,</span>
+    <span class="n">uuid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">Label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">Probabilities</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">created_at</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">meeting</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">fabric_service</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">sampling_order</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">contact_info</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">intro_message</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">non_eu_country</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">invoice</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">):</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="s2">&quot;INSERT INTO  manufy_db.predictions (uuid, all_Labels, Probabilities, created_at, label_meeting, label_fabric_service, label_sampling_order, label_contact_info, label_intro_message, label_non_eu_country, label_invoice) VALUES (</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">,</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span>
+        <span class="p">[</span>
+            <span class="n">uuid</span><span class="p">,</span>
+            <span class="n">Label</span><span class="p">,</span>
+            <span class="n">Probabilities</span><span class="p">,</span>
+            <span class="n">created_at</span><span class="p">,</span>
+            <span class="n">meeting</span><span class="p">,</span>
+            <span class="n">fabric_service</span><span class="p">,</span>
+            <span class="n">sampling_order</span><span class="p">,</span>
+            <span class="n">contact_info</span><span class="p">,</span>
+            <span class="n">intro_message</span><span class="p">,</span>
+            <span class="n">non_eu_country</span><span class="p">,</span>
+            <span class="n">invoice</span><span class="p">,</span>
+        <span class="p">],</span>
+    <span class="p">)</span></div>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The inputs for insertdata function refer to the columns to give as input for the table.</span>
+<span class="sd">A row to insert should be a list of the values to insert into the table i.e. a list of length 24 with a value for each of the columns.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Marc Blomvliet.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

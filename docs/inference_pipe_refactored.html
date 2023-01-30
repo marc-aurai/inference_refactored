@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>inference_pipe_refactored module &mdash; Inference Refactored Docs 27.01.23 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="cosmosdb_insert module" href="cosmosdb_insert.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> Inference Refactored Docs
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">inference_refactored</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="cosmosdb_insert.html">cosmosdb_insert module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">inference_pipe_refactored module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#inference_pipe_refactored.cosmos_label_format"><code class="docutils literal notranslate"><span class="pre">cosmos_label_format()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inference_pipe_refactored.endpoint_request"><code class="docutils literal notranslate"><span class="pre">endpoint_request()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inference_pipe_refactored.get_queue_client_inference"><code class="docutils literal notranslate"><span class="pre">get_queue_client_inference()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inference_pipe_refactored.get_queue_client_prediction"><code class="docutils literal notranslate"><span class="pre">get_queue_client_prediction()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inference_pipe_refactored.insert_message_into_prediction_queue"><code class="docutils literal notranslate"><span class="pre">insert_message_into_prediction_queue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inference_pipe_refactored.manufy_format"><code class="docutils literal notranslate"><span class="pre">manufy_format()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inference_pipe_refactored.process_message"><code class="docutils literal notranslate"><span class="pre">process_message()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Inference Refactored Docs</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="modules.html">inference_refactored</a> &raquo;</li>
+      <li>inference_pipe_refactored module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/inference_pipe_refactored.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-inference_pipe_refactored">
+<span id="inference-pipe-refactored-module"></span><h1>inference_pipe_refactored module<a class="headerlink" href="#module-inference_pipe_refactored" title="Permalink to this heading"></a></h1>
+<p>This is the main script of the Inference container on Azure.
+The container reads the preprocessed messages inside the inference queue,
+and sends a post request to the Azure ML studio endpoint. The endpoint will answer with
+a prediction, uuid, probabilities, prediction_list and timestamp -&gt; created_at.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="inference_pipe_refactored.cosmos_label_format">
+<span class="sig-prename descclassname"><span class="pre">inference_pipe_refactored.</span></span><span class="sig-name descname"><span class="pre">cosmos_label_format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uuid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prediction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">probabilities</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">created_at</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inference_pipe_refactored.html#cosmos_label_format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#inference_pipe_refactored.cosmos_label_format" title="Permalink to this definition"></a></dt>
+<dd><p>Create unique column for each label inside the cosmosdb for predictions</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>uuid</strong> (<em>str</em>) – Unique user id.</p></li>
+<li><p><strong>prediction</strong> (<em>int</em>) – Predicted label for the message.</p></li>
+<li><p><strong>probabilities</strong> (<em>list</em>) – List with all the probabilities, meaning that there are in total 7 probabilities in this list.</p></li>
+<li><p><strong>labels.</strong> (<em>Since their are in total 7</em>) – </p></li>
+<li><p><strong>created_at</strong> (<em>str</em>) – Timestamp of the message.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Dictionary with the following format: {“Label”: boolean}</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="inference_pipe_refactored.endpoint_request">
+<span class="sig-prename descclassname"><span class="pre">inference_pipe_refactored.</span></span><span class="sig-name descname"><span class="pre">endpoint_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">preprocessed_message:</span> <span class="pre">&lt;module</span> <span class="pre">'json'</span> <span class="pre">from</span> <span class="pre">'/Library/Frameworks/Python.framework/Versions/3.9/lib/python3.9/json/__init__.py'&gt;</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/inference_pipe_refactored.html#endpoint_request"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#inference_pipe_refactored.endpoint_request" title="Permalink to this definition"></a></dt>
+<dd><p>This function sends a post request to the Inference endpoint on Azure ML studio. And returns in total 5 objects.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>preprocessed_message</strong> (<em>json</em>) – The message from the inference Queue, this message was provided
+by the preprocess container. Therefore this message is already pre-processed.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns in total 5 objects: prediction, uuid, probabilities, prediction_list, created_at</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="inference_pipe_refactored.get_queue_client_inference">
+<span class="sig-prename descclassname"><span class="pre">inference_pipe_refactored.</span></span><span class="sig-name descname"><span class="pre">get_queue_client_inference</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">connect_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">QueueClient</span></span></span><a class="reference internal" href="_modules/inference_pipe_refactored.html#get_queue_client_inference"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#inference_pipe_refactored.get_queue_client_inference" title="Permalink to this definition"></a></dt>
+<dd><p>Returns an Azure Queue Storage connection object, in this case the inference-messages-queue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>connect_str</strong> (<em>str</em>) – The connection string to the storage account.
+The secret connection string is located in the .env file.</p></li>
+<li><p><strong>q_name</strong> (<em>str</em>) – The name of the Azure queue.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>This client represents interaction with the inference queue.</dt><dd><p>It provides operations to create, delete, or configure a queue and includes operations to send,
+receive, peek, delete, and update messages within it.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>QueueClient</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="inference_pipe_refactored.get_queue_client_prediction">
+<span class="sig-prename descclassname"><span class="pre">inference_pipe_refactored.</span></span><span class="sig-name descname"><span class="pre">get_queue_client_prediction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">connect_str</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">QueueClient</span></span></span><a class="reference internal" href="_modules/inference_pipe_refactored.html#get_queue_client_prediction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#inference_pipe_refactored.get_queue_client_prediction" title="Permalink to this definition"></a></dt>
+<dd><p>Returns an Azure Queue Storage connection object, in this case the predicted-labels-queue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>connect_str</strong> (<em>str</em>) – The connection string to the storage account.
+The secret connection string is located in the .env file.</p></li>
+<li><p><strong>q_name</strong> (<em>str</em>) – The name of the Azure queue.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>This client represents interaction with the prediction queue.</dt><dd><p>It provides operations to create, delete, or configure a queue and includes operations to send,
+receive, peek, delete, and update messages within it.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>QueueClient</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="inference_pipe_refactored.insert_message_into_prediction_queue">
+<span class="sig-prename descclassname"><span class="pre">inference_pipe_refactored.</span></span><span class="sig-name descname"><span class="pre">insert_message_into_prediction_queue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">queue_client</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QueueClient</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uuid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prediction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">probabilities</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prediction_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">created_at</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cosmos_session</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inference_pipe_refactored.html#insert_message_into_prediction_queue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#inference_pipe_refactored.insert_message_into_prediction_queue" title="Permalink to this definition"></a></dt>
+<dd><p>Insert the dictionary as a message inside the prediction Queue.
+with the following format: [{“label”: “meeting”, “probability”:68.80}]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>queue_client</strong> (<em>QueueClient</em>) – This client represents interaction with the prediction queue.</p></li>
+<li><p><strong>uuid</strong> (<em>str</em>) – Unique user id.</p></li>
+<li><p><strong>prediction</strong> (<em>int</em>) – Predicted label for the message.</p></li>
+<li><p><strong>probabilities</strong> (<em>list</em>) – List with all the probabilities, meaning that there are in total 7 probabilities in this list.
+Since their are in total 7 labels.</p></li>
+<li><p><strong>prediction_list</strong> (<em>list</em>) – Includes a list with 0’s(False) and 1’s(True) for each label as a list.</p></li>
+<li><p><strong>created_at</strong> (<em>str</em>) – Timestamp of the message.</p></li>
+<li><p><strong>cosmos_session</strong> (<em>Session</em>) – The Cosmos Database session in Azure (manufy_db.predictions).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="inference_pipe_refactored.manufy_format">
+<span class="sig-prename descclassname"><span class="pre">inference_pipe_refactored.</span></span><span class="sig-name descname"><span class="pre">manufy_format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">probabilities</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inference_pipe_refactored.html#manufy_format"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#inference_pipe_refactored.manufy_format" title="Permalink to this definition"></a></dt>
+<dd><p>Manufy expects the following format inside the prediction Queue:
+[{‘label’: ‘contact_info’, ‘probability’: 94.06}, {‘label’: ‘meeting’, ‘probability’: 52.55}]</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>labels</strong> (<em>list</em>) – Includes a list with 0’s(False) and 1’s(True) for each label as a list.
+probabilities (list): List with all the probabilities, meaning that there are in total 7 probabilities in this list.
+Since their are in total 7 labels.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns a dictionary with the following format: [{‘label’: ‘contact_info’, ‘probability’: 94.06}]</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="inference_pipe_refactored.process_message">
+<span class="sig-prename descclassname"><span class="pre">inference_pipe_refactored.</span></span><span class="sig-name descname"><span class="pre">process_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/inference_pipe_refactored.html#process_message"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#inference_pipe_refactored.process_message" title="Permalink to this definition"></a></dt>
+<dd><dl class="simple">
+<dt>Reads and processes messages in the Azure inference Queue.</dt><dd><p>And sends the pre-processed message to the Azure ML studio endpoint.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>message</strong> (<em>dict</em>) – This is the preprocessed message that comes from the inference Queue.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns in total 6 objects: message, uuid, prediction, probabilities, prediction_list, created_at</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>(str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cosmosdb_insert.html" class="btn btn-neutral float-left" title="cosmosdb_insert module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Marc Blomvliet.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
